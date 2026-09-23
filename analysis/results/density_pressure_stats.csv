@@ -1,0 +1,17 @@
+comparison,metric,group_a,group_a_mean,group_a_n,group_b,group_b_mean,group_b_n,welch_t,p_value,total_balls,f_stat,n_per_group
+single_layer,mean_total_N,NO_partial_2nd_layer,40.89637604166666,20.0,yes,25.454522541666666,100.0,15.106299507601843,1.5772942637149387e-19,,,
+single_layer,fluctuation_std_N,NO_partial_2nd_layer,0.2926675810228708,20.0,yes,0.18197298086031155,100.0,12.010994064238425,7.82250510963062e-14,,,
+single_layer,frame_to_frame_rms_N,NO_partial_2nd_layer,0.4110640995735192,20.0,yes,0.2579202454605558,100.0,10.950455308492026,3.135380632740176e-12,,,
+single_layer,peak_total_N,NO_partial_2nd_layer,41.9489,20.0,yes,26.140290000000007,100.0,15.034721883055553,2.0807950339484763e-19,,,
+ratio_at_matched_total_balls,mean_total_N,,,,,,,,2.469458429564137e-52,300.0,89750.87502007716,"[10, 10, 10]"
+ratio_at_matched_total_balls,mean_total_N,,,,,,,,3.178088578046585e-50,400.0,62624.804099434776,"[10, 10, 10]"
+ratio_at_matched_total_balls,mean_total_N,,,,,,,,1.740105638829477e-51,500.0,77663.26502800899,"[10, 10, 10]"
+ratio_at_matched_total_balls,mean_total_N,,,,,,,,2.241335971926573e-51,600.0,76220.38763044483,"[10, 10, 10]"
+ratio_at_matched_total_balls,fluctuation_std_N,,,,,,,,2.527307033051188e-16,300.0,179.56005906482264,"[10, 10, 10]"
+ratio_at_matched_total_balls,fluctuation_std_N,,,,,,,,2.4544248623029914e-14,400.0,124.0579324222486,"[10, 10, 10]"
+ratio_at_matched_total_balls,fluctuation_std_N,,,,,,,,1.2444941943307364e-15,500.0,158.05697123532673,"[10, 10, 10]"
+ratio_at_matched_total_balls,fluctuation_std_N,,,,,,,,4.549304254160536e-15,600.0,142.35050512143317,"[10, 10, 10]"
+ratio_at_matched_total_balls,frame_to_frame_rms_N,,,,,,,,1.0022390934663839e-13,300.0,110.44379239508145,"[10, 10, 10]"
+ratio_at_matched_total_balls,frame_to_frame_rms_N,,,,,,,,3.703905214219001e-12,400.0,81.36362243540655,"[10, 10, 10]"
+ratio_at_matched_total_balls,frame_to_frame_rms_N,,,,,,,,3.7615235942217536e-13,500.0,98.87693722166662,"[10, 10, 10]"
+ratio_at_matched_total_balls,frame_to_frame_rms_N,,,,,,,,1.1449511033646973e-13,600.0,109.22757226629284,"[10, 10, 10]"
