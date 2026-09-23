@@ -260,13 +260,150 @@ Keep each figure tied to exactly one objective/claim in the text.
       lands, so the analysis history itself is available if reviewers/judges ask
       about methodology.
 
+## 6. Progress log (update this as work lands, so a new session can pick up fast)
+
+- **Phase 0 (setup):** done. `.venv/` + `requirements.txt` (pandas, numpy, scipy,
+  matplotlib, seaborn, pyarrow, statsmodels). `analysis/{data,scripts,figures,results}/`
+  created.
+- **Phase 1 (cleaning/validation):** done via `analysis/scripts/load_data.py` +
+  `validate_cleaning.py` + `check_drift_shape.py`. Findings: `Total_N` exactly
+  equals sum of 6 sensors (no reconstruction needed); calibration is excellent
+  (measured = 0.999×expected, R²=0.9998); **every trial shows a universal,
+  accelerating downward drift** (~-0.02 to -0.03 N/s, gets steeper not
+  flatter — ruled out simple settling-to-equilibrium and ruled out a
+  session/run-order artifact; most likely tied to the physical setup, since
+  it's ~1.7x stronger in `NO_partial_2nd_layer` trials than clean
+  `single_layer=yes` ones). Policy: use first-1s baseline for static
+  comparisons, detrend before computing fluctuation features, keep drift
+  slope itself as a feature.
+- **Phase 3 (feature table):** done, `analysis/data/processed/trial_features.csv`
+  (480 rows x 35 cols) via `build_features.py`. **Major correction along the
+  way:** the originally-planned lag-cross-correlation "wave speed" method was
+  validated as non-functional (never reliably detects anything, even on
+  obstacle trials) and was replaced with `front_back_redistribution` /
+  `front_middle_redistribution` / `middle_back_redistribution` (plain
+  whole-trial correlation between raw row signals) — see §5.1 above for the
+  full reasoning. This turned out to be the single most useful feature in
+  the whole analysis.
+- **Phase 4a (density -> pressure, V1-V12):** done via
+  `density_pressure_analysis.py` (`analysis/figures/08_density_pressure_relationship.png`).
+  Honest null result: neither measured-vs-expected weight deviation
+  (r=-0.07, p=0.47) nor fluctuation coefficient-of-variation (r=0.15, p=0.09)
+  trend meaningfully with packing fraction alone in the undisturbed baseline.
+  **Density alone does not destabilize the packing in this range (0.35-0.89)
+  — an external disturbance is required.** This sharpens (doesn't refute) the
+  proposal's critical-density claim: state it as density+disturbance jointly
+  mattering, not density alone.
+- **Phase 4c (obstacle factors, V13-V48):** done via
+  `obstacle_factor_analysis.py` (results in `analysis/results/anova_*.csv`,
+  `ranking_*.csv`) + `plot_obstacle_angle_effect.py`
+  (`analysis/figures/09_obstacle_angle_effect.png`). **Headline result:**
+  `redistribution_strength` (|front-back correlation|) is very well explained
+  by obstacle geometry (~71% of variance, residual only 29%), overwhelmingly
+  driven by `obstacle_angle_deg` (32%) and its interaction with
+  `obstacle_shape` (15%) — **45 degrees produces the strongest, most
+  consistent redistribution regardless of shape; 60 degrees is generally
+  safest, especially for the "s"-shaped obstacle** (drops to ~0.6-0.7 with
+  wide spread, vs ~0.88 at 45 degrees). By contrast, `fluctuation_std_N` and
+  `spike_above_baseline_N` are mostly noise (~93% residual each) — obstacle
+  geometry barely predicts raw fluctuation/spike magnitude, only the
+  redistribution pattern. Report `redistribution_strength` as the headline
+  danger metric, not the other two.
+- **Phase 4d (model validation):** done via `spectral_and_relaxation_model.py`
+  (`analysis/figures/10_power_spectrum.png`,
+  `analysis/results/relaxation_model_fits.csv`). Two negative/clarifying
+  results, both honestly reported rather than dressed up: (1) power spectral
+  density confirms — via an independent, standard method, not just the
+  earlier cross-correlation check — there is no periodic/oscillating wave
+  (peak frequency location was checked across 30 trials and scatters
+  randomly, std=1.3 Hz, i.e. it's noise); (2) exponential relaxation fits
+  degenerate to unphysical tau values (hundreds of thousands of seconds),
+  meaning the redistribution process is still actively developing throughout
+  the full 30s trial and never reaches equilibrium — consistent with, and a
+  per-row confirmation of, the earlier "accelerating not decelerating drift"
+  finding. Middle fits worst (R^2~0.24, little real trend to fit -- matches
+  it being the "quiet anchor"); Back fits "best" (R^2 up to 0.89) but that
+  just reflects a strong linear trend, not real relaxation curvature.
+- **Phase 5 (statistical rigor pass):** done via `statistical_rigor_pass.py`
+  (`analysis/results/tukey_hsd_all_versions.csv`). Bootstrap 95% CIs:
+  obstacle-vs-no-obstacle redistribution difference is robust
+  ([+0.345, +0.453], nowhere near zero); the density-vs-fluctuation-CV
+  correlation from Phase 4a is now formally killed, not just borderline
+  (95% CI [-0.040, +0.332], crosses zero -- do not state this trend in the
+  paper). Tukey HSD (corrected) on obstacle_angle_deg: all three angles
+  differ significantly from each other, refining the danger ordering to
+  **45 deg > 75 deg > 60 deg** (a non-monotonic "sweet spot" at 60, not
+  simply "higher angle = safer"). **Important correction to Phase 4c:**
+  Tukey HSD across all 36 individual versions shows only 264/630 (42%)
+  pairwise comparisons remain significant after correction, and the #1-ranked
+  "most dangerous" version (V16) is only significantly different from 14/35
+  (40%) of the others. **Do not report an individual "most dangerous
+  version" ranking as precise/definitive in the paper -- report the
+  angle/shape-interaction factor effect (which IS robust) as the headline
+  claim instead.**
+- **Not yet started:** Phase 4b write-up framing (redistribution, not wave
+  speed — data and stats already computed, just needs to become prose),
+  Phase 6 (final figure polish for paper/poster), Phase 7 (writing), Phase 8
+  (git commit — substantial uncommitted work has accumulated, see `git status`).
+
 ## 5. Open questions to resolve early (don't guess — check the data or ask)
-- Which direction do obstacles introduce disturbance from — is Front the side
-  nearer the obstacle in `middle` vs `middle_back` positions? This determines how to
-  interpret propagation-lag sign in Phase 4b. Check any rig photos/notes if
-  available; otherwise infer from which sensor row shows the earliest/largest
-  response in obstacle trials vs V10 baseline.
-- Is there a specific "disturbance event" logged in each trial (e.g. obstacle
-  inserted at a known time), or is the disturbance just the obstacle's constant
-  presence in the packed system? This affects whether wave analysis should look
-  for a discrete event response or steady-state fluctuation statistics.
+- **[PARTIALLY NARROWED FROM DATA, STILL NEEDS PHYSICAL CONFIRMATION]** Which
+  direction do obstacles introduce disturbance from — is Front the side nearer
+  the obstacle in `middle` vs `middle_back` positions? Using all 3 rows (not
+  just Front/Back), the data shows: (a) Middle's own start-to-end change is
+  essentially IDENTICAL between `middle` and `middle_back` (-0.283 vs -0.287 N,
+  noise-level difference) -- moving the obstacle only rebalances the Front/Back
+  split around Middle, it doesn't touch Middle itself; (b) Middle and Back move
+  together (correlation ~+0.47) while Front moves opposite to both (Front-Middle
+  ~-0.42, Front-Back ~-0.8 to -0.84) -- Front is consistently the "winner" that
+  gains force, Middle+Back the "losers," in every obstacle trial and even
+  (much more weakly) in the no-obstacle baseline (fb corr ~-0.40 at baseline vs
+  ~-0.77/-0.84 with an obstacle). This means the front-loading tendency is
+  likely partly a baseline characteristic of the rig itself (e.g. a slight
+  tray tilt), which an obstacle then strongly amplifies rather than creates
+  from nothing -- **worth checking physically whether the tray is level**.
+  Still needs ground-truth physical confirmation (see below) before stating
+  obstacle-to-sensor geometry as fact in the paper.
+  **How to confirm physically:** (1) check if the tray is level/tilted --
+  directly testable and would explain the baseline front-bias; (2) with the
+  physical rig, press a finger directly on the obstacle's marked spot for each
+  of `middle`/`middle_back` and see which sensor row (now checking all 3, not
+  just 2) spikes hardest/first; (3) ask Krishiv directly to confirm tray
+  levelness and where `middle_back` sits relative to Middle and Back rows.
+- **[RESOLVED, see below]** ~~Is there a specific "disturbance event" logged in
+  each trial, or is the disturbance just the obstacle's constant presence?~~
+
+### 5.1 Resolved: there is no fast traveling wave in this data — there is slow redistribution instead
+
+Phase 3 originally implemented "wave propagation" as a cross-correlation lag
+search between detrended sensor-row residuals (looking for a fast disturbance
+arriving late at a downstream row). Validated against all 480 trials: this
+**never reliably fires** — peak correlation stayed ~0.11-0.16 everywhere
+(below any reasonable significance threshold), identically for obstacle and
+no-obstacle trials. Conclusion: there is no fast (sub-second, delayed-copy)
+propagating pulse detectable in this 8 Hz data, with or without an obstacle.
+
+Testing the alternative hypothesis instead — that the *slow settling trend*
+itself is the signal, not a nuisance to remove — found a real, validated
+effect: the plain whole-trial correlation between raw (non-detrended)
+front-row and back-row force is strongly **negative** (front and back force
+move in anti-phase as the packing settles, i.e. force redistributes from one
+end to the other rather than a pulse arriving late). This is:
+- much stronger and more consistent with an obstacle present
+  (mean r = -0.81, std 0.11) than without one (mean r = -0.40, std 0.31,
+  see `analysis/figures/07_front_back_redistribution.png`)
+- moderately correlated with packing fraction in the no-obstacle density
+  sweep (r = 0.50 between density and \|correlation\|)
+
+**Implication for the plan:** Phase 4b ("wave propagation & shock behaviour")
+should be reframed as **force redistribution / anti-phase coupling**, not
+literal traveling-wave speed. The `front_back_redistribution`,
+`front_middle_redistribution`, `middle_back_redistribution` columns in
+`trial_features.csv` are the reliable features for this; the `lag_*_ms` and
+`corr_*_residual` columns are kept for transparency but should be treated as
+noise, not evidence of anything. This is itself a legitimate, citable result:
+it still supports the core proposal claim that crowds/packings shift from
+independent-particle behaviour to coupled, structure-wide force transmission
+as density (and disturbance) increase — it's just a redistribution effect
+rather than a fast shock wave, which is worth stating explicitly and
+honestly in the paper rather than forcing the wave framing to fit.

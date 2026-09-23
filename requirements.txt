@@ -4,3 +4,5 @@ scipy
 matplotlib
 seaborn
 pyarrow
+statsmodels
+python-docx

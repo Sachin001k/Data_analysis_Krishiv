@@ -11,6 +11,24 @@ Drift policy (see CLAUDE.md / session discussion):
     minus its own linear fit) so the systematic decay doesn't get counted as
     "wave energy".
 
+Wave-lag method note (important):
+  The original design cross-correlated detrended residuals to find a "lag of
+  peak correlation" between sensor rows, assuming a fast disturbance arrives
+  at one row and shows up slightly later at another. Validated against all
+  480 trials: this NEVER reliably fires (peak correlation stays ~0.11-0.16
+  everywhere, below any sane threshold, even in obstacle trials) -- there is
+  no fast delayed-copy relationship in this data at 8 Hz.
+  What actually carries signal is the RAW (non-detrended) whole-trial
+  correlation between rows: front and back force move in anti-phase as the
+  packing settles (correlation ~ -0.4 to -0.99), i.e. force redistributes
+  from one row to another rather than arriving late. This anti-correlation
+  is stronger and far more consistent with an obstacle present (mean -0.81,
+  std 0.11) than without one (mean -0.40, std 0.31), and moderately tracks
+  packing fraction in the no-obstacle density sweep (r=0.50 with |corr|).
+  Both feature families are kept below: `*_redistribution` (the validated,
+  meaningful one) and `lag_*` / `corr_*_residual` (kept for completeness /
+  transparency, but treat as unreliable per-trial noise).
+
 Run from the repo root:
     source .venv/bin/activate
     python analysis/scripts/build_features.py
@@ -85,9 +103,22 @@ def build_trial_features(trial: pd.DataFrame) -> dict:
     resid_middle, _ = detrend(t_s, middle)
     resid_front, _ = detrend(t_s, front)
 
+    # Fast-fluctuation lag search (kept for completeness, but see docstring:
+    # verified against ~0 reliable detections across all 480 trials -- there
+    # is no fast delayed-copy relationship in the detrended residuals here).
     lag_fm, corr_fm = lag_of_peak_correlation(resid_front, resid_middle)
     lag_mb, corr_mb = lag_of_peak_correlation(resid_middle, resid_back)
     lag_fb, corr_fb = lag_of_peak_correlation(resid_front, resid_back)
+
+    # Slow-trend coupling: plain whole-trial correlation between RAW (not
+    # detrended) row signals. This is the feature that actually turned out to
+    # carry signal -- verified across all 480 trials to be strongly negative
+    # (front and back redistribute force in anti-phase as the packing
+    # settles) and to get both stronger and less variable with density and
+    # with obstacle presence. See build_features.py revision notes.
+    front_back_redistribution = np.corrcoef(front, back)[0, 1]
+    front_middle_redistribution = np.corrcoef(front, middle)[0, 1]
+    middle_back_redistribution = np.corrcoef(middle, back)[0, 1]
 
     frame_diffs = np.diff(total)
 
@@ -106,11 +137,14 @@ def build_trial_features(trial: pd.DataFrame) -> dict:
         / (trial["Front_L_N"].mean() + trial["Front_R_N"].mean()),
         "front_back_gradient_N": front.mean() - back.mean(),
         "lag_front_to_middle_ms": lag_fm,
-        "corr_front_middle": corr_fm,
+        "corr_front_middle_residual": corr_fm,
         "lag_middle_to_back_ms": lag_mb,
-        "corr_middle_back": corr_mb,
+        "corr_middle_back_residual": corr_mb,
         "lag_front_to_back_ms": lag_fb,
-        "corr_front_back": corr_fb,
+        "corr_front_back_residual": corr_fb,
+        "front_back_redistribution": front_back_redistribution,
+        "front_middle_redistribution": front_middle_redistribution,
+        "middle_back_redistribution": middle_back_redistribution,
     }
 
 
@@ -142,7 +176,7 @@ def main():
     print(features_df[[
         "version_num", "trial", "packing_fraction", "obstacle_shape",
         "mean_total_N", "drift_slope_N_per_s", "fluctuation_std_N",
-        "lag_front_to_back_ms", "corr_front_back",
+        "front_back_redistribution",
     ]].head(8).to_string(index=False))
 
     print("\nSanity check - fluctuation_std_N should be small relative to mean_total_N:")
